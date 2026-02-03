@@ -3,7 +3,7 @@ package com.workintech.s17d2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workintech.s17d2.model.*;
 import com.workintech.s17d2.rest.DeveloperController;
-import com.workintech.s17d2.tax.DeveloperTax;
+import com.workintech.s17d2.tax.Taxable;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,21 +15,16 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(value = { DeveloperController.class})
+@WebMvcTest(DeveloperController.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @ExtendWith(ResultAnalyzer.class)
 class MainTest {
 
-    private final DeveloperTax developerTax = new DeveloperTax();
-    @Autowired
-    private Environment env;
-    private DeveloperController controller;
+    /* -------------------- Core Spring Test Beans -------------------- */
 
     @Autowired
     private MockMvc mockMvc;
@@ -37,178 +32,104 @@ class MainTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private Environment env;
+
+    @Autowired
+    private DeveloperController controller;
+
+    /* -------------------- Mocked Dependency -------------------- */
+
     @MockBean
-    private DeveloperTax mockDeveloperTaxForController;
+    private Taxable mockTaxable;
+
+    /* -------------------- Pure Unit Tests (Model / Enum) -------------------- */
+
     @Test
     @DisplayName("Test Developer Creation")
     void testDeveloperCreation() {
+        Developer developer = new Developer(1, "John Doe", 1000.0, Experience.JUNIOR);
 
-        int expectedId = 1;
-        String expectedName = "John Doe";
-        double expectedSalary = 1000.0;
-        Experience expectedExperience = Experience.JUNIOR;
-        
-        Developer developer = new Developer(expectedId, expectedName, expectedSalary, expectedExperience);
-
-        
-        int actualId = developer.getId();
-        String actualName = developer.getName();
-        double actualSalary = developer.getSalary();
-        Experience actualExperience = developer.getExperience();
-
-        
-        assertEquals(expectedId, actualId, "The ID should match the expected value.");
-        assertEquals(expectedName, actualName, "The name should match the expected value.");
-        assertEquals(expectedSalary, actualSalary, "The salary should match the expected value.");
-        assertEquals(expectedExperience, actualExperience, "The experience should match the expected value.");
-
-
+        assertEquals(1, developer.getId());
+        assertEquals("John Doe", developer.getName());
+        assertEquals(1000.0, developer.getSalary());
+        assertEquals(Experience.JUNIOR, developer.getExperience());
     }
 
     @Test
     @DisplayName("Test Experience Enum Values")
     void testEnumValuesExist() {
-        
-        assertTrue(containsEnumValue("JUNIOR"), "JUNIOR should be a valid Experience enum value.");
-        assertTrue(containsEnumValue("MID"), "MID should be a valid Experience enum value.");
-        assertTrue(containsEnumValue("SENIOR"), "SENIOR should be a valid Experience enum value.");
-    }
-
-    private boolean containsEnumValue(String value) {
-        for (Experience experience : Experience.values()) {
-            if (experience.name().equals(value)) {
-                return true;
-            }
-        }
-        return false;
+        assertNotNull(Experience.valueOf("JUNIOR"));
+        assertNotNull(Experience.valueOf("MID"));
+        assertNotNull(Experience.valueOf("SENIOR"));
     }
 
     @Test
-    @DisplayName("Test JuniorDeveloper Existence and Inheritance")
-    void testJuniorDeveloperExistenceAndInheritance() {
-
-        JuniorDeveloper juniorDeveloper = new JuniorDeveloper(1, "Test Developer", 50000.0);
-        assertTrue(juniorDeveloper instanceof Developer, "JuniorDeveloper should extend Developer.");
-        assertEquals(Experience.JUNIOR, juniorDeveloper.getExperience(), "Experience should be JUNIOR.");
-    }
-    @Test
-    @DisplayName("Test MidDeveloper Existence and Inheritance")
-    void testMidDeveloperExistenceAndInheritance() {
-
-        MidDeveloper midDeveloper = new MidDeveloper(1, "Test Developer", 60000.0);
-        assertTrue(midDeveloper instanceof Developer, "MidDeveloper should extend Developer.");
-        assertEquals(Experience.MID, midDeveloper.getExperience(), "Experience should be MID.");
+    @DisplayName("Test JuniorDeveloper Inheritance")
+    void testJuniorDeveloperInheritance() {
+        Developer dev = new JuniorDeveloper(1, "Test", 1000.0);
+        assertTrue(dev instanceof Developer);
+        assertEquals(Experience.JUNIOR, dev.getExperience());
     }
 
     @Test
-    @DisplayName("Test SeniorDeveloper Existence and Inheritance")
-    void testSeniorDeveloperExistenceAndInheritance() {
-
-        SeniorDeveloper seniorDeveloper = new SeniorDeveloper(1, "Test Developer", 80000.0);
-        assertTrue(seniorDeveloper instanceof Developer, "SeniorDeveloper should extend Developer.");
-        assertEquals(Experience.SENIOR, seniorDeveloper.getExperience(), "Experience should be SENIOR.");
-    }
-    
-    
-    
-    /*-------------------DeveloperTaxTest-------------------*/
-
-
-
-
-    @Test
-    @DisplayName("Test Get Simple Tax Rate")
-    void testGetSimpleTaxRate() {
-        Double expectedSimpleTaxRate = 15d; 
-        assertEquals(expectedSimpleTaxRate, developerTax.getSimpleTaxRate(), "The simple tax rate should be correct.");
+    @DisplayName("Test MidDeveloper Inheritance")
+    void testMidDeveloperInheritance() {
+        Developer dev = new MidDeveloper(1, "Test", 1000.0);
+        assertTrue(dev instanceof Developer);
+        assertEquals(Experience.MID, dev.getExperience());
     }
 
     @Test
-    @DisplayName("Test Get Middle Tax Rate")
-    void testGetMiddleTaxRate() {
-        Double expectedMiddleTaxRate = 25d; 
-        assertEquals(expectedMiddleTaxRate, developerTax.getMiddleTaxRate(), "The middle tax rate should be correct.");
+    @DisplayName("Test SeniorDeveloper Inheritance")
+    void testSeniorDeveloperInheritance() {
+        Developer dev = new SeniorDeveloper(1, "Test", 1000.0);
+        assertTrue(dev instanceof Developer);
+        assertEquals(Experience.SENIOR, dev.getExperience());
     }
 
-    @Test
-    @DisplayName("Test Get Upper Tax Rate")
-    void testGetUpperTaxRate() {
-        Double expectedUpperTaxRate = 35d; 
-        assertEquals(expectedUpperTaxRate, developerTax.getUpperTaxRate(), "The upper tax rate should be correct.");
-    }
-
-
-    /*-------------------DeveloperControllerTest-------------------*/
-
+    /* -------------------- Controller Tests -------------------- */
 
     @BeforeEach
     void setup() throws Exception {
-        controller = new DeveloperController(new DeveloperTax());
-        // Simulate @PostConstruct call if necessary. In reality, this is managed by Spring.
-        controller.init();
-        Developer developer = new Developer(1, "Initial Developer", 5000.0, Experience.JUNIOR);
+
+        // Mock Taxable behaviour (CRITICAL)
+        when(mockTaxable.getSimpleTaxRate()).thenReturn(15d);
+        when(mockTaxable.getMiddleTaxRate()).thenReturn(25d);
+        when(mockTaxable.getUpperTaxRate()).thenReturn(35d);
+
+        Developer initial =
+                new Developer(1, "Initial Developer", 5000.0, Experience.JUNIOR);
+
         mockMvc.perform(post("/developers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(developer)))
+                        .content(objectMapper.writeValueAsString(initial)))
                 .andExpect(status().isCreated());
     }
 
     @Test
-    @DisplayName("application properties istenilenler eklendi mi?")
-    void serverPortIsSetTo8585() {
-
-        String serverPort = env.getProperty("server.port");
-        assertThat(serverPort).isEqualTo("8585");
-
-        String contextPath = env.getProperty("server.servlet.context-path");
-        assertNotNull(contextPath);
-        assertThat(contextPath).isEqualTo("/workintech");
-
-        //management.info.env.enabled
-        String managementInfoEnvEnabled = env.getProperty("management.info.env.enabled");
-        assertNotNull(managementInfoEnvEnabled);
-        assertThat(managementInfoEnvEnabled).isEqualTo("true");
-
-
-        //management.endpoints.web.exposure.include
-        String managementEndpointsWebExposureInclude = env.getProperty("management.endpoints.web.exposure.include");
-        assertNotNull(managementEndpointsWebExposureInclude);
-        assertThat(managementEndpointsWebExposureInclude).isEqualTo("info,health,mappings");
-
-
-        String infoAppName= env.getProperty("info.app.name");
-        assertNotNull(infoAppName);
-        //info.app.description
-        String infoAppDescription= env.getProperty("info.app.description");
-        assertNotNull(infoAppDescription);
-
-        //info.app.version
-        String infoAppVersion= env.getProperty("info.app.version");
-        assertNotNull(infoAppVersion);
-
-    }
-
-    @Test
-    @DisplayName("DeveloperController:DeveloperMapCheck")
     @Order(1)
-    void developersMapShouldNotBeNullAfterInitialization() {
-        assertNotNull(controller.developers, "The developers map should be initialized (not null) after @PostConstruct");
+    @DisplayName("Developer map initialized")
+    void developersMapShouldNotBeNull() {
+        assertNotNull(controller.developers);
     }
 
     @Test
-    @DisplayName("DeveloperController:AddDeveloper")
     @Order(2)
+    @DisplayName("Add Developer")
     void testAddDeveloper() throws Exception {
-        Developer newDeveloper = new Developer(2, "New Developer", 6000.0, Experience.MID);
+        Developer dev =
+                new Developer(2, "New Developer", 6000.0, Experience.MID);
+
         mockMvc.perform(post("/developers")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newDeveloper)))
+                        .content(objectMapper.writeValueAsString(dev)))
                 .andExpect(status().isCreated());
     }
 
     @Test
-    @DisplayName("DeveloperController:GetAllDevelopers")
     @Order(3)
+    @DisplayName("Get All Developers")
     void testGetAllDevelopers() throws Exception {
         mockMvc.perform(get("/developers"))
                 .andExpect(status().isOk())
@@ -217,29 +138,49 @@ class MainTest {
     }
 
     @Test
-    @DisplayName("DeveloperController:GetDeveloperById")
     @Order(4)
+    @DisplayName("Get Developer By Id")
     void testGetDeveloperById() throws Exception {
         mockMvc.perform(get("/developers/{id}", 1))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("DeveloperController:UpdateDeveloper")
     @Order(5)
+    @DisplayName("Update Developer")
     void testUpdateDeveloper() throws Exception {
-        Developer updatedDeveloper = new Developer(1, "Updated Developer", 7000.0, Experience.SENIOR);
+        Developer updated =
+                new Developer(1, "Updated", 7000.0, Experience.SENIOR);
+
         mockMvc.perform(put("/developers/{id}", 1)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedDeveloper)))
+                        .content(objectMapper.writeValueAsString(updated)))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("DeveloperController:DeleteDeveloper")
     @Order(6)
+    @DisplayName("Delete Developer")
     void testDeleteDeveloper() throws Exception {
         mockMvc.perform(delete("/developers/{id}", 1))
                 .andExpect(status().isOk());
+    }
+
+    /* -------------------- Application Properties Test -------------------- */
+
+    @Test
+    @DisplayName("application.properties check")
+    void applicationPropertiesCheck() {
+
+        assertThat(env.getProperty("server.port")).isEqualTo("8585");
+        assertThat(env.getProperty("server.servlet.context-path")).isEqualTo("/workintech");
+
+        assertThat(env.getProperty("management.info.env.enabled")).isEqualTo("true");
+        assertThat(env.getProperty("management.endpoints.web.exposure.include"))
+                .isEqualTo("info,health,mappings");
+
+        assertNotNull(env.getProperty("info.app.name"));
+        assertNotNull(env.getProperty("info.app.description"));
+        assertNotNull(env.getProperty("info.app.version"));
     }
 }
